@@ -1,6 +1,7 @@
 """A small agent: choose tools, run allowed tools, validate the assessment."""
 import json
 import os
+from time import monotonic
 from pathlib import Path
 
 import requests
@@ -105,7 +106,11 @@ def validate_assessment(result, scenario):
 
 def call_model(messages, model, api_key, tools_enabled):
     """Use Gemini's documented OpenAI-compatible REST endpoint."""
-    body = {'model': model, 'messages': messages, 'max_tokens': 4000}
+    stage = 'Tool selection' if tools_enabled else 'Assessment generation'
+    read_timeout = 60 if tools_enabled else 120
+    body = {'model': model, 'messages': messages,
+            'max_tokens': 1024 if tools_enabled else 4000,
+            'reasoning_effort': 'low'}
     if tools_enabled:
         body['tools'] = TOOL_SCHEMAS
         body['tool_choice'] = 'required'
@@ -114,16 +119,20 @@ def call_model(messages, model, api_key, tools_enabled):
     try:
         response = requests.post(
             'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-            headers={'Authorization': f'Bearer {api_key}'}, json=body, timeout=(10, 45),
+            headers={'Authorization': f'Bearer {api_key}'}, json=body, timeout=(10, read_timeout),
         )
     except requests.Timeout:
-        raise RuntimeError('AI request timed out. Please retry or choose another available model.') from None
+        raise RuntimeError(f'{stage} timed out after waiting {read_timeout}s for data. '
+                           'No automatic retry was made. Check connectivity or retry once.') from None
     # Do not expose provider error bodies or request headers in the UI.
     if response.status_code == 429:
         raise RuntimeError('API quota reached. Wait or check your model quota in AI Studio.')
     if not response.ok:
         raise RuntimeError(f'API request failed ({response.status_code}). Check key and model access.')
-    return response.json()['choices'][0]['message']
+    choice = response.json()['choices'][0]
+    if choice.get('finish_reason') == 'length':
+        raise RuntimeError(f'{stage} reached its output limit. No partial assessment was accepted.')
+    return choice['message']
 
 
 def assess(scenario, model, progress=None):
@@ -144,14 +153,16 @@ def assess(scenario, model, progress=None):
                      'Select all tools needed in this single turn. Include get_requirements. '
                      'Include get_review_criteria for high-risk screening. Do not assess yet.'})
     report('1/3: Selecting checks (API call 1 of 2)…')
+    started = monotonic()
     message = call_model(messages, model, api_key, True)
+    selection_seconds = round(monotonic() - started, 1)
     calls = message.get('tool_calls') or []
     if not 1 <= len(calls) <= 2:
         raise ValueError('Agent must select one or two allowed tools. Assessment stopped.')
     messages.append(message)
     trace = []
     called = set()
-    report('2/3: Retrieving policies and selected review criteria locally…')
+    report(f'2/3: Tool selection took {selection_seconds}s. Retrieving policies locally…')
     for call in calls:
         name = call['function']['name']
         arguments = json.loads(call['function'].get('arguments') or '{}')
@@ -167,7 +178,9 @@ def assess(scenario, model, progress=None):
                      'Return the final assessment JSON now. Keep each explanation and action '
                      'to one short sentence. No more tool calls.'})
     report('3/3: Generating assessment (API call 2 of 2)…')
+    started = monotonic()
     final = call_model(messages, model, api_key, False)
+    assessment_seconds = round(monotonic() - started, 1)
     result = validate_assessment(json.loads(final.get('content') or ''), scenario)
-    report('Assessment validated.')
+    report(f'Assessment validated. Generation took {assessment_seconds}s.')
     return result, trace

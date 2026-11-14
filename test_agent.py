@@ -68,8 +68,29 @@ class AgentTests(unittest.TestCase):
             post.return_value.status_code = 200
             post.return_value.json.return_value = {'choices': [{'message': {}}]}
             call_model([], 'test-model', 'fake-key', True)
-            self.assertEqual(post.call_args.kwargs['timeout'], (10, 45))
+            self.assertEqual(post.call_args.kwargs['timeout'], (10, 60))
+            self.assertEqual(post.call_args.kwargs['json']['reasoning_effort'], 'low')
+            self.assertEqual(post.call_args.kwargs['json']['max_tokens'], 1024)
             self.assertEqual(post.call_args.kwargs['json']['tool_choice'], 'required')
+
+    def test_assessment_request_settings(self):
+        with patch('agent.requests.post') as post:
+            post.return_value.ok = True
+            post.return_value.status_code = 200
+            post.return_value.json.return_value = {'choices': [{'message': {}}]}
+            call_model([], 'test-model', 'fake-key', False)
+            self.assertEqual(post.call_args.kwargs['timeout'], (10, 120))
+            self.assertEqual(post.call_args.kwargs['json']['max_tokens'], 4000)
+            self.assertNotIn('tools', post.call_args.kwargs['json'])
+
+    def test_truncated_assessment_rejected(self):
+        with patch('agent.requests.post') as post:
+            post.return_value.ok = True
+            post.return_value.status_code = 200
+            post.return_value.json.return_value = {'choices': [
+                {'finish_reason': 'length', 'message': {'content': '{'}}]}
+            with self.assertRaisesRegex(RuntimeError, 'output limit'):
+                call_model([], 'test-model', 'fake-key', False)
 
     def test_screen(self):
         from streamlit.testing.v1 import AppTest
