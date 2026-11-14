@@ -12,13 +12,13 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py --server.address 0.0.0.0
 ```
 
-Open forwarded port 8501 and keep it private. Choose a scenario, confirm fictional data, and click **Assess scenario**. The default model is `gemini-2.5-flash`; change it in the sidebar or set `GEMINI_MODEL` to a model available in your Google AI Studio project. Availability and free-tier quotas are account-dependent. A Google API key is not an OpenAI key.
+Open forwarded port 8501 and keep it private. Choose a scenario, confirm fictional data, and click **Assess scenario**. The default model is `gemini-3.8-flash`; change it in the sidebar or set `GEMINI_MODEL` to a model available in your Google AI Studio project. Availability and free-tier quotas are account-dependent. A Google API key is not an OpenAI key.
 
 ## How it works
 
 1. `app.py` accepts the scenario and confirms consent to send fictional text to Gemini.
 2. `agent.py` sends the scenario and tool definitions to the model.
-3. The model selects tools. Python only executes `get_requirements` and `get_review_criteria`, with no arguments. There are at most three planning calls, four tools per planning call, and one final call. Every request times out after 90 seconds.
+3. The model selects tools. Python only executes `get_requirements` and `get_review_criteria`, with no arguments. There is one tool-selection call (one or two unique allowed tools), followed by one final assessment call. Requests use a 10-second connection timeout and a 45-second read timeout. These are per-request network limits, not a guaranteed overall completion deadline. The UI displays progress at each stage.
 4. Tool results are returned to the model, which produces JSON containing eight findings.
 5. Python checks all policy IDs, duplicates, statuses, field types, and exact evidence quotations. Invalid output is rejected rather than displayed as a valid assessment.
 6. The screen displays findings, actions, execution trace, and a downloadable JSON report. `audit.py` saves only metadata to local SQLite, including failed attempts.

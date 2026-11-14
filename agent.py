@@ -105,16 +105,19 @@ def validate_assessment(result, scenario):
 
 def call_model(messages, model, api_key, tools_enabled):
     """Use Gemini's documented OpenAI-compatible REST endpoint."""
-    body = {'model': model, 'messages': messages, 'max_tokens': 6000}
+    body = {'model': model, 'messages': messages, 'max_tokens': 4000}
     if tools_enabled:
         body['tools'] = TOOL_SCHEMAS
-        body['tool_choice'] = 'auto'
+        body['tool_choice'] = 'required'
     else:
         body['response_format'] = {'type': 'json_object'}
-    response = requests.post(
-        'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-        headers={'Authorization': f'Bearer {api_key}'}, json=body, timeout=90,
-    )
+    try:
+        response = requests.post(
+            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+            headers={'Authorization': f'Bearer {api_key}'}, json=body, timeout=(10, 45),
+        )
+    except requests.Timeout:
+        raise RuntimeError('AI request timed out. Please retry or choose another available model.') from None
     # Do not expose provider error bodies or request headers in the UI.
     if response.status_code == 429:
         raise RuntimeError('API quota reached. Wait or check your model quota in AI Studio.')
@@ -123,36 +126,48 @@ def call_model(messages, model, api_key, tools_enabled):
     return response.json()['choices'][0]['message']
 
 
-def assess(scenario, model):
-    """At most three planning calls and one final assessment call."""
+def assess(scenario, model, progress=None):
+    """One tool-selection call, local tool execution, then one assessment call."""
     if not 1 <= len(scenario.strip()) <= 10000:
         raise ValueError('Enter between 1 and 10,000 characters.')
     api_key = os.environ.get('GEMINI_API_KEY', '')
     if not api_key:
         raise ValueError('Set GEMINI_API_KEY in the environment before assessing.')
+
+    # Optional callback lets the UI show progress without importing Streamlit here.
+    def report(text):
+        if progress:
+            progress(text)
+
     messages = [{'role': 'system', 'content': PROMPT}, {'role': 'user', 'content': scenario}]
+    messages.append({'role': 'user', 'content':
+                     'Select all tools needed in this single turn. Include get_requirements. '
+                     'Include get_review_criteria for high-risk screening. Do not assess yet.'})
+    report('1/3: Selecting checks (API call 1 of 2)…')
+    message = call_model(messages, model, api_key, True)
+    calls = message.get('tool_calls') or []
+    if not 1 <= len(calls) <= 2:
+        raise ValueError('Agent must select one or two allowed tools. Assessment stopped.')
+    messages.append(message)
     trace = []
     called = set()
-    for turn in range(3):
-        message = call_model(messages, model, api_key, True)
-        calls = message.get('tool_calls') or []
-        if not calls:
-            break
-        if len(calls) > 4:
-            raise ValueError('Too many tool calls. Assessment stopped.')
-        messages.append(message)
-        for call in calls:
-            name = call['function']['name']
-            arguments = json.loads(call['function'].get('arguments') or '{}')
-            if name not in TOOLS or arguments != {}:
-                raise ValueError('Unapproved tool or arguments. Assessment stopped.')
-            output = TOOLS[name]()
-            called.add(name)
-            trace.append({'step': len(trace) + 1, 'tool': name, 'result': output})
-            messages.append({'role': 'tool', 'tool_call_id': call['id'], 'content': json.dumps(output)})
+    report('2/3: Retrieving policies and selected review criteria locally…')
+    for call in calls:
+        name = call['function']['name']
+        arguments = json.loads(call['function'].get('arguments') or '{}')
+        if name not in TOOLS or arguments != {} or name in called:
+            raise ValueError('Unapproved or duplicate tool or arguments. Assessment stopped.')
+        output = TOOLS[name]()
+        called.add(name)
+        trace.append({'step': len(trace) + 1, 'tool': name, 'result': output})
+        messages.append({'role': 'tool', 'tool_call_id': call['id'], 'content': json.dumps(output)})
     if 'get_requirements' not in called:
         raise ValueError('Agent did not retrieve policies. Assessment stopped.')
-    messages.append({'role': 'user', 'content': 'Return the final assessment JSON now. No more tool calls.'})
+    messages.append({'role': 'user', 'content':
+                     'Return the final assessment JSON now. Keep each explanation and action '
+                     'to one short sentence. No more tool calls.'})
+    report('3/3: Generating assessment (API call 2 of 2)…')
     final = call_model(messages, model, api_key, False)
     result = validate_assessment(json.loads(final.get('content') or ''), scenario)
+    report('Assessment validated.')
     return result, trace

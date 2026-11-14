@@ -18,7 +18,7 @@ The button calls `assess(scenario, model)`. It receives two values: the assessme
 
 `call_model()` makes one HTTP POST. The JSON body includes the model, conversation messages, and either tools or JSON output mode. The Authorization header uses the environment key. HTTP errors become short controlled messages.
 
-`assess()` maintains the conversation in a list called `messages`. When Gemini requests a function, Python checks its name and arguments, executes the approved function, and appends the tool result. After at most three rounds, it requests the final JSON. A policy retrieval is mandatory. This is a bounded agent loop, not multiple agents or a complex framework.
+`assess()` maintains the conversation in a list called `messages`. When Gemini requests a function, Python checks its name and arguments, executes the approved function, and appends the tool result. After one tool-selection round and local tool execution, it requests the final JSON. Successful assessments use exactly two API calls. An optional progress callback updates the screen without coupling the agent to Streamlit. A policy retrieval is mandatory. This is a bounded agent loop, not multiple agents or a complex framework.
 
 `validate_assessment()` checks eight unique policy IDs, allowed statuses, required text fields, the review flag, and exact quote matches. It cannot independently verify that a quote supports a conclusion. A reviewer must do that.
 

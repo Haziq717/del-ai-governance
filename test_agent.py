@@ -5,7 +5,8 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from agent import POLICIES, assess, validate_assessment
+from agent import POLICIES, assess, call_model, validate_assessment
+import requests
 
 
 def sample_result():
@@ -40,12 +41,13 @@ class AgentTests(unittest.TestCase):
         tool_message = {'role': 'assistant', 'content': None, 'tool_calls': [
             {'id': 'call_1', 'type': 'function', 'function': {
                 'name': 'get_requirements', 'arguments': '{}'}}]}
-        with patch('agent.call_model', side_effect=[tool_message, {'content': 'Ready'},
-                                                    {'content': json.dumps(sample_result())}]) as api:
-            result, trace = assess('Fictional example', 'test-model')
+        with patch('agent.call_model', side_effect=[tool_message, {'content': json.dumps(sample_result())}]) as api:
+            updates = []
+            result, trace = assess('Fictional example', 'test-model', progress=updates.append)
         self.assertEqual(len(result['findings']), 8)
         self.assertEqual(trace[0]['tool'], 'get_requirements')
-        self.assertEqual(api.call_count, 3)
+        self.assertEqual(api.call_count, 2)
+        self.assertEqual(len(updates), 4)
 
     @patch.dict(os.environ, {'GEMINI_API_KEY': 'fake-test-key'})
     def test_unapproved_tool_blocked(self):
@@ -54,6 +56,20 @@ class AgentTests(unittest.TestCase):
         with patch('agent.call_model', return_value=message):
             with self.assertRaises(ValueError):
                 assess('Fictional example', 'test-model')
+
+    def test_timeout_has_safe_message(self):
+        with patch('agent.requests.post', side_effect=requests.Timeout):
+            with self.assertRaisesRegex(RuntimeError, 'timed out'):
+                call_model([], 'test-model', 'fake-key', True)
+
+    def test_request_limits(self):
+        with patch('agent.requests.post') as post:
+            post.return_value.ok = True
+            post.return_value.status_code = 200
+            post.return_value.json.return_value = {'choices': [{'message': {}}]}
+            call_model([], 'test-model', 'fake-key', True)
+            self.assertEqual(post.call_args.kwargs['timeout'], (10, 45))
+            self.assertEqual(post.call_args.kwargs['json']['tool_choice'], 'required')
 
     def test_screen(self):
         from streamlit.testing.v1 import AppTest

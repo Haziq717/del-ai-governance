@@ -14,7 +14,7 @@ st.set_page_config(page_title='Security & Compliance Analyst', layout='wide')
 st.title('Security & Compliance Analyst')
 st.caption('Acme Financial Services • Initial assessment • Human review required')
 st.warning('Fictional scenarios only. Submitted text is sent to Google Gemini. Do not enter real personal or confidential information.')
-model = st.sidebar.text_input('Gemini model', value=os.getenv('GEMINI_MODEL', 'gemini-2.5-flash'))
+model = st.sidebar.text_input('Gemini model', value=os.getenv('GEMINI_MODEL', 'gemini-3.8-flash'))
 st.sidebar.caption('Choose a model enabled for your AI Studio project. Free-tier quotas vary.')
 choice = st.selectbox('Choose a scenario', ['Custom scenario', *scenarios])
 scenario = st.text_area('Describe the proposed AI application', value=scenarios.get(choice, ''),
@@ -34,8 +34,9 @@ if st.button('Assess scenario', type='primary'):
         st.error('Enter a model name.')
     else:
         try:
-            with st.spinner('Retrieving requirements and assessing evidence…'):
-                result, trace = assess(scenario, model.strip())
+            with st.status('Assessing scenario…', expanded=True) as status:
+                result, trace = assess(scenario, model.strip(), progress=st.write)
+                status.update(label='Assessment complete', state='complete', expanded=False)
             try:
                 metadata = record_event(model, 'validated', [t['tool'] for t in trace])
             except Exception:
