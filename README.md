@@ -93,4 +93,10 @@ Enter the real key only in the hosting service's secret settings, never in the r
 
 ## Screenshots
 
-Screenshots of the running app and a completed live assessment have not been added yet.
+Scenario selection and application settings:
+
+![Scenario selection screen](screenshots/input.png)
+
+A completed custom assessment showing five requirements met and three gaps, with source evidence and recommended actions:
+
+![Assessment results and policy findings](screenshots/assessment.png)
