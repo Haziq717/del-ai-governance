@@ -80,16 +80,7 @@ python live_check.py --all
 That uses eight API calls. Review the explanations as well as the reported statuses. For the original customer-support and internal-security examples, the expected result is AI-003 Met and the other seven requirements Insufficient information. For the employee example, all eight remain Insufficient information, with additional review recommended under the prototype screening criteria.
 
 
-## Deploy on Streamlit Community Cloud
 
-Create an app at https://share.streamlit.io and select this repository, branch `main`, and entrypoint `app.py`. In Advanced settings, add these root-level secrets:
-
-```toml
-GROQ_API_KEY = "your Groq API key"
-GROQ_MODEL = "openai/gpt-oss-20b"
-```
-
-Enter the real key only in the hosting service's secret settings, never in the repository. Codespaces secrets are separate and are not copied to the deployed app. Select Deploy, then test the hosted app with a fictional example. Requests from visitors use the configured account's quota. SQLite metadata on the hosting instance should not be treated as durable storage.
 
 ## Screenshots
 
