@@ -1,69 +1,104 @@
 # Security & Compliance Analyst
 
-This is a small Streamlit app for reviewing proposed AI applications against eight security and governance requirements. Paste a scenario or load one of the three examples: customer support, security alert analysis, or employee promotion recommendations.
+## Requirements
 
-The result shows a finding for each requirement, the supporting text, and a suggested action. You can filter findings, inspect the tools used, and download the assessment as JSON.
+- Python 3.11 or newer
+- A Groq API key with available quota
 
-## Run the app
+Create a key at https://console.groq.com/keys. Keep it outside the repository.
 
-You need Python and a Groq API key. In Codespaces, add the key as a secret named `GROQ_API_KEY` and give this repository access. Restart the Codespace after adding the secret.
-
-Install the dependencies and start Streamlit:
+## Install
 
 ```bash
+git clone https://github.com/Haziq717/del-ai-governance.git
+cd del-ai-governance
 python -m pip install -r requirements.txt
+```
+
+## Set the API key
+
+Use the instructions for your environment.
+
+### GitHub Codespaces
+
+In GitHub account settings, open **Codespaces → Secrets → New secret**. Name it `GROQ_API_KEY`, enter your key, and allow this repository access. Stop and reopen the Codespace after adding or changing the secret.
+
+### macOS or Linux
+
+Enter the key at the hidden prompt:
+
+```bash
+read -s -p "Groq API key: " GROQ_API_KEY
+export GROQ_API_KEY
+echo
+```
+
+### Windows PowerShell
+
+```powershell
+$secureKey = Read-Host "Groq API key" -AsSecureString
+$env:GROQ_API_KEY = [System.Net.NetworkCredential]::new("", $secureKey).Password
+Remove-Variable secureKey
+```
+
+Local terminal settings apply to the current session. Run the app from that same terminal.
+
+## Run
+
+```bash
+python -m streamlit run app.py
+```
+
+Open http://localhost:8501.
+
+In Codespaces, use:
+
+```bash
 python -m streamlit run app.py --server.address 0.0.0.0
 ```
 
-Open port 8501 in the browser. Keep the forwarded port private. Load an example, confirm that the input is fictional, and click **Assess scenario**.
+Open the forwarded address for port **8501** and keep the port private.
 
-The default model is `openai/gpt-oss-20b`, served through Groq. You can change it in the sidebar or set `GROQ_MODEL`. The selected model needs to support tool calls and JSON output. Your account's model access and quota still apply.
+Load an example or enter a custom scenario, tick the fictional-data confirmation, and click **Assess scenario**. Use fictional information only; your input is sent to Groq.
 
-Do not put your API key in a Python file or commit it to GitHub. Use fictional scenarios: the text is sent to Groq.
+The default model is `openai/gpt-oss-20b`. You can change it in the sidebar to another model your account supports.
 
-## How it works
+## Tests
 
-There are two model requests. The first selects from two Python functions: `get_requirements()` reads the governance requirements, and `get_review_criteria()` returns the prototype's risk-screening criteria. Python checks the requested function names and arguments before running them.
+Offline tests do not need an API key:
 
-The second request receives the retrieved information and writes the assessment. Each finding contains a policy ID, status, source sentence IDs, explanation, and action. Python uses those sentence IDs to copy evidence directly from the original input, then checks the result before displaying it.
+```bash
+python -m unittest -v test_agent.py
+```
 
-The policies live in `policies.json`. There are only eight, so a JSON file is enough; the app does not need model training or a vector database.
+Live checks require a key and use your API quota. Run one case at a time:
 
-Most of the code is in three files:
+```bash
+python live_check.py --case customer
+python live_check.py --case security
+python live_check.py --case employee
+```
 
-- `app.py` handles input, progress, filters, and results.
-- `agent.py` handles API requests, tools, and validation.
-- `audit.py` records assessment metadata in SQLite.
+Each case uses two API calls. The full set uses up to eight:
 
-The audit database stores timestamps, model names, outcomes, tool names, and policy version. It does not store the scenario or API key. Downloaded reports do contain the scenario.
+```bash
+python live_check.py --all
+```
 
-## Reading the findings
+## Troubleshooting
 
-**Met** means the scenario explicitly supports the requirement. **Gap identified** means it explicitly contradicts the requirement. **Insufficient information** means more evidence is needed. **Not applicable** requires evidence that a conditional requirement does not apply.
-
-For example, mentioning a third-party API does not prove that its security assessment was skipped. Internal cloud hosting does not prove that the model was developed internally. In both cases, missing provider or assessment details should lead to a request for clarification.
-
-The requirements do not define “high risk.” This prototype uses three screening indicators: AI as the primary input to consequential individual decisions, autonomous business or security actions, and explicitly unprotected sensitive-data submission. These are implementation assumptions, not additional company policies. Missing information alone is not one of these indicators.
-
-## Checks and limitations
-
-Python restricts the model to two read-only tools and checks policy coverage, duplicate IDs, statuses, required fields, and evidence references. Unknown source IDs and incomplete output are rejected. Input is limited to 10,000 characters, and each assessment uses at most two API requests with no automatic retries.
-
-These checks do not prove that the model interpreted the evidence correctly. A real source sentence can still be used to support the wrong conclusion. A reviewer must check the findings and recommendations. The app cannot approve deployment or independently verify controls.
-
-The prompt tells the model to treat scenario text as data rather than instructions, but prompt-injection resistance is not guaranteed. The model cannot execute shell commands, browse the web, or take business actions. The app has no separate login or role system; local logging is not a production monitoring setup.
-
-
-
-
-
+- **Key missing:** confirm the secret is named `GROQ_API_KEY`. Restart the Codespace after changing a Codespaces secret.
+- **Quota reached:** check your Groq account limits and wait for the relevant limit to reset.
+- **Model access error:** check that the sidebar model is available to your account.
+- **Timeout:** check connectivity and retry once.
+- **Port 8501 already in use:** stop the previous Streamlit process with **Ctrl+C**, then start it again.
 
 ## Screenshots
 
-Scenario selection and application settings:
+Scenario selection:
 
 ![Scenario selection screen](screenshots/input.png)
 
-A completed custom assessment showing five requirements met and three gaps, with source evidence and recommended actions:
+Completed assessment:
 
 ![Assessment results and policy findings](screenshots/assessment.png)
