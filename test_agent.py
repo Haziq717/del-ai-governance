@@ -36,7 +36,7 @@ class AgentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_assessment(result, 'Example')
 
-    @patch.dict(os.environ, {'GEMINI_API_KEY': 'fake-test-key'})
+    @patch.dict(os.environ, {'GROQ_API_KEY': 'fake-test-key'})
     def test_agent_loop(self):
         tool_message = {'role': 'assistant', 'content': None, 'tool_calls': [
             {'id': 'call_1', 'type': 'function', 'function': {
@@ -49,7 +49,7 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(api.call_count, 2)
         self.assertEqual(len(updates), 4)
 
-    @patch.dict(os.environ, {'GEMINI_API_KEY': 'fake-test-key'})
+    @patch.dict(os.environ, {'GROQ_API_KEY': 'fake-test-key'})
     def test_unapproved_tool_blocked(self):
         message = {'role': 'assistant', 'tool_calls': [{'id': 'bad', 'function': {
             'name': 'run_shell', 'arguments': '{}'}}]}
@@ -68,6 +68,7 @@ class AgentTests(unittest.TestCase):
             post.return_value.status_code = 200
             post.return_value.json.return_value = {'choices': [{'message': {}}]}
             call_model([], 'test-model', 'fake-key', True)
+            self.assertEqual(post.call_args.args[0], 'https://api.groq.com/openai/v1/chat/completions')
             self.assertEqual(post.call_args.kwargs['timeout'], (10, 60))
             self.assertEqual(post.call_args.kwargs['json']['reasoning_effort'], 'low')
             self.assertEqual(post.call_args.kwargs['json']['max_tokens'], 1024)
@@ -92,18 +93,35 @@ class AgentTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'output limit'):
                 call_model([], 'test-model', 'fake-key', False)
 
+    @patch.dict(os.environ, {'GROQ_API_KEY': 'fake-test-key'})
+    def test_results_dashboard(self):
+        from streamlit.testing.v1 import AppTest
+        app = AppTest.from_file(str(Path(__file__).with_name('app.py'))).run()
+        app.selectbox[0].select('Customer Support Assistant').run()
+        app.checkbox[0].check().run()
+        with patch('agent.assess', return_value=(sample_result(), [])), \
+             patch('audit.record_event', return_value={'assessment_id': 'test'}):
+            next(b for b in app.button if b.label == 'Assess scenario').click().run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(len(app.metric), 4)
+        self.assertEqual(len(app.tabs), 3)
+        app.multiselect[0].set_value(['Met']).run()
+        self.assertTrue(any('No findings match' in i.value for i in app.info))
+        app.text_area[0].set_value('Changed scenario').run()
+        self.assertEqual(len(app.metric), 0)
+
     def test_screen(self):
         from streamlit.testing.v1 import AppTest
         app = AppTest.from_file(str(Path(__file__).with_name('app.py'))).run()
         self.assertEqual(len(app.exception), 0)
-        app.button[0].click().run()
+        next(b for b in app.button if b.label == 'Assess scenario').click().run()
         self.assertEqual(app.error[0].value, 'Enter a scenario first.')
         for name, phrase in [('Customer Support Assistant', 'customer names'),
                              ('Internal Security Assistant', 'security alerts'),
                              ('Automated Employee Decisions', 'promotion')]:
             app.selectbox[0].select(name).run()
             self.assertIn(phrase, app.text_area[0].value)
-        app.button[0].click().run()
+        next(b for b in app.button if b.label == 'Assess scenario').click().run()
         self.assertIn('Confirm fictional data', app.error[0].value)
 
 

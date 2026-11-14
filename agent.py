@@ -105,7 +105,7 @@ def validate_assessment(result, scenario):
 
 
 def call_model(messages, model, api_key, tools_enabled):
-    """Use Gemini's documented OpenAI-compatible REST endpoint."""
+    """Use Groq's OpenAI-compatible REST endpoint."""
     stage = 'Tool selection' if tools_enabled else 'Assessment generation'
     read_timeout = 60 if tools_enabled else 120
     body = {'model': model, 'messages': messages,
@@ -118,7 +118,7 @@ def call_model(messages, model, api_key, tools_enabled):
         body['response_format'] = {'type': 'json_object'}
     try:
         response = requests.post(
-            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+            'https://api.groq.com/openai/v1/chat/completions',
             headers={'Authorization': f'Bearer {api_key}'}, json=body, timeout=(10, read_timeout),
         )
     except requests.Timeout:
@@ -126,7 +126,7 @@ def call_model(messages, model, api_key, tools_enabled):
                            'No automatic retry was made. Check connectivity or retry once.') from None
     # Do not expose provider error bodies or request headers in the UI.
     if response.status_code == 429:
-        raise RuntimeError('API quota reached. Wait or check your model quota in AI Studio.')
+        raise RuntimeError('API quota reached. Wait or check your model quota in Groq Console.')
     if not response.ok:
         raise RuntimeError(f'API request failed ({response.status_code}). Check key and model access.')
     choice = response.json()['choices'][0]
@@ -139,9 +139,9 @@ def assess(scenario, model, progress=None):
     """One tool-selection call, local tool execution, then one assessment call."""
     if not 1 <= len(scenario.strip()) <= 10000:
         raise ValueError('Enter between 1 and 10,000 characters.')
-    api_key = os.environ.get('GEMINI_API_KEY', '')
+    api_key = os.environ.get('GROQ_API_KEY', '')
     if not api_key:
-        raise ValueError('Set GEMINI_API_KEY in the environment before assessing.')
+        raise ValueError('Set GROQ_API_KEY in the environment before assessing.')
 
     # Optional callback lets the UI show progress without importing Streamlit here.
     def report(text):
@@ -159,7 +159,8 @@ def assess(scenario, model, progress=None):
     calls = message.get('tool_calls') or []
     if not 1 <= len(calls) <= 2:
         raise ValueError('Agent must select one or two allowed tools. Assessment stopped.')
-    messages.append(message)
+    messages.append({'role': 'assistant', 'content': message.get('content'),
+                     'tool_calls': calls})
     trace = []
     called = set()
     report(f'2/3: Tool selection took {selection_seconds}s. Retrieving policies locally…')

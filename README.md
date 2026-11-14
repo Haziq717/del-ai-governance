@@ -4,7 +4,7 @@ A small Python application that assesses fictional AI use cases against eight se
 
 ## Run in Codespaces
 
-1. Add a Codespaces secret named `GEMINI_API_KEY` in your GitHub account settings, and allow this repository. Restart an existing Codespace after adding it. Never commit the key.
+1. Add a Codespaces secret named `GROQ_API_KEY` in your GitHub account settings, and allow this repository. Restart an existing Codespace after adding it. Never commit the key.
 2. Install and run:
 
 ```bash
@@ -12,11 +12,11 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py --server.address 0.0.0.0
 ```
 
-Open forwarded port 8501 and keep it private. Choose a scenario, confirm fictional data, and click **Assess scenario**. The default model is `gemini-3.8-flash`; change it in the sidebar or set `GEMINI_MODEL` to a model available in your Google AI Studio project. Availability and free-tier quotas are account-dependent. A Google API key is not an OpenAI key.
+Open forwarded port 8501 and keep it private. Choose a scenario, confirm fictional data, and click **Assess scenario**. The default model is `openai/gpt-oss-20b`; change it in the sidebar or set `GROQ_MODEL` to a model available in your Groq Console project. Availability and free-tier quotas are account-dependent. A Groq API key is not an OpenAI key.
 
 ## How it works
 
-1. `app.py` accepts the scenario and confirms consent to send fictional text to Gemini.
+1. `app.py` accepts the scenario and confirms consent to send fictional text to Groq.
 2. `agent.py` sends the scenario and tool definitions to the model.
 3. The model selects tools. Python only executes `get_requirements` and `get_review_criteria`, with no arguments. There is one tool-selection call (one or two unique allowed tools), followed by one final assessment call. Requests use low reasoning effort, a 10-second connection timeout, and read timeouts of 60 seconds for tool selection and 120 seconds for assessment generation. Tool selection has a 1,024-token output budget and the assessment has 4,000. Truncated responses are rejected; requests are not automatically retried. These are per-request network limits, not a guaranteed overall completion deadline. The UI displays progress and completed-call timings at each stage. These settings aim to reduce timeout failures; actual latency depends on the provider and must be measured in live testing.
 4. Tool results are returned to the model, which produces JSON containing eight findings.
@@ -25,7 +25,7 @@ Open forwarded port 8501 and keep it private. Choose a scenario, confirm fiction
 
 ## Why these choices
 
-Eight policies fit in a JSON file, so there is no vector database or training pipeline. Ordinary functions and dictionaries make the agent loop visible. The model decides which allowed tool to call; Python enforces execution boundaries. The REST request uses Gemini's documented OpenAI-compatible endpoint; it does not call OpenAI or require the OpenAI SDK.
+Eight policies fit in a JSON file, so there is no vector database or training pipeline. Ordinary functions and dictionaries make the agent loop visible. The model decides which allowed tool to call; Python enforces execution boundaries. The REST request uses Groq's documented OpenAI-compatible endpoint; it does not call OpenAI or require the OpenAI SDK.
 
 ## Finding statuses
 
@@ -48,7 +48,7 @@ The supplied policies do not define high risk. This prototype recommends additio
 - Exact quote and structure validation. A matching quote does **not** prove the model's interpretation is correct. Prompt-injection resistance is not guaranteed.
 - Plain-text rendering of generated narrative, no unsafe HTML.
 - API key stays in the environment. Raw provider errors are not displayed.
-- The Gemini free tier may use content to improve products. Do not submit real personal or confidential information.
+- Use fictional data only; review Groq data terms before any real deployment.
 - Metadata logging is local, not a production monitoring service. The database and reports should be protected. Codespaces port access provides the demo boundary; the app has no independent authentication or role system.
 - No legal determination, verified compliance certification, or deployment approval. All findings require human review.
 - Downloaded reports contain the input scenario and findings; the local audit database does not.
@@ -59,7 +59,7 @@ The supplied policies do not define high risk. This prototype recommends additio
 python -m unittest -v test_agent.py
 ```
 
-Offline tests cover the agent loop with a simulated API, blocked tools, invalid policy coverage, fabricated quotes, evidence requirements, and UI input controls. Simulated responses verify orchestration, not Gemini reasoning quality.
+Offline tests cover the agent loop with a simulated API, blocked tools, invalid policy coverage, fabricated quotes, evidence requirements, and UI input controls. Simulated responses verify orchestration, not Groq reasoning quality.
 
 Live acceptance checks (require your key):
 
@@ -83,3 +83,7 @@ Read `WALKTHROUGH.md` for the functions in execution order.
 ## Development and submission
 
 Commit working increments during development. Capture a real assessment screenshot before final submission. After submitting the repository link, make no further commits, pushes, or repository changes.
+
+## Interactive dashboard
+
+Load one of three scenario cards, edit the scenario, and assess it. Results include status counts, a status filter, policy evidence panels, an action list, an execution trace tab, and a JSON download. Results are hidden when the scenario changes. The API-key indicator only checks that the environment variable exists, not provider connectivity.
