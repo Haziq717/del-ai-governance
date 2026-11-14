@@ -5,14 +5,14 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from agent import POLICIES, assess, call_model, validate_assessment
+from agent import POLICIES, assess, attach_evidence, source_sentences, call_model, validate_assessment
 import requests
 
 
 def sample_result():
     return {'summary': 'More information is needed.', 'review_recommended': True,
             'review_reason': 'Risk screening needs clarification.', 'findings': [
-                {'policy_id': p['id'], 'status': 'Insufficient information', 'evidence': '',
+                {'policy_id': p['id'], 'status': 'Insufficient information', 'evidence': '', 'evidence_source_ids': [],
                  'explanation': 'No supporting details.', 'action': 'Request supporting documentation.'}
                 for p in POLICIES]}
 
@@ -55,7 +55,7 @@ class AgentTests(unittest.TestCase):
         self.assertIn('Missing evidence is NOT evidence of a violation', final_messages[0]['content'])
         self.assertIn('Missing governance details alone do not trigger', final_messages[0]['content'])
         self.assertIn('AI-008', final_messages[0]['content'])
-        self.assertEqual(final_messages[1]['content'], 'Fictional example')
+        self.assertEqual(json.loads(final_messages[1]['content'])['scenario'], 'Fictional example')
         self.assertEqual(len(updates), 4)
 
     @patch.dict(os.environ, {'GROQ_API_KEY': 'fake-test-key'})
@@ -130,6 +130,27 @@ class AgentTests(unittest.TestCase):
             self.assertIn('Unsupported parameter', str(error.exception))
             self.assertNotIn('fake-secret', str(error.exception))
             self.assertNotIn('private payload', str(error.exception))
+
+    def test_evidence_is_copied_from_original(self):
+        scenario = 'Owner is Sara.  Logging is enabled.\nMonitoring is enabled.'
+        result = sample_result()
+        result['findings'][0].update(evidence_source_ids=[1], evidence='Invented quotation', status='Met')
+        result = attach_evidence(result, scenario, source_sentences(scenario))
+        self.assertEqual(result['findings'][0]['evidence'], 'Owner is Sara.')
+        validate_assessment(result, scenario)
+
+    def test_unknown_source_is_rejected(self):
+        result = sample_result()
+        result['findings'][0]['evidence_source_ids'] = [999]
+        with self.assertRaises(ValueError):
+            attach_evidence(result, 'Example.', source_sentences('Example.'))
+
+    def test_multiple_sources_preserve_original_spacing(self):
+        scenario = 'Logging is enabled.  Monitoring is enabled.'
+        result = sample_result()
+        result['findings'][0]['evidence_source_ids'] = [1, 2]
+        result = attach_evidence(result, scenario, source_sentences(scenario))
+        self.assertEqual(result['findings'][0]['evidence'], scenario)
 
     def test_screen(self):
         from streamlit.testing.v1 import AppTest

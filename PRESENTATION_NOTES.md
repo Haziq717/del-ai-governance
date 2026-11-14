@@ -27,3 +27,9 @@ Only say the revised live checks passed after observing their output. Show the a
 ## Interface change
 
 The original dashboard used a dark background. The revised version uses Streamlit's light theme, pale blue-gray page and sidebar backgrounds, white cards, dark navy text, and blue primary actions. Scenario cards, status filters, action lists, and tool traces remain available. Restart the app to load the theme configuration; a browser theme override may need to be reset to the app's light theme.
+
+## Evidence quotation repair
+
+A later live run was blocked because a generated quotation did not exactly occur in the scenario. Instead of weakening the quote validator or accepting approximate matches, Python now numbers source text spans before the final request. The model returns `evidence_source_ids`, and Python copies the original text using stored offsets. Invalid source IDs are rejected. When multiple sentences are selected, the displayed quote is the original contiguous span containing them, including intervening text. Empty source IDs mean missing evidence. The original exact-match validator remains as a final check.
+
+This removes the need for the model to reproduce punctuation and spacing. It does not establish that the selected sentence supports the conclusion; that remains subject to human review and live regression testing. This change was verified with offline tests for original-text copying, invalid IDs, and multi-sentence spacing. Revised live results must still be observed before claiming they pass.

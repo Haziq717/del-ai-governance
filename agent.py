@@ -1,6 +1,7 @@
 """A small agent: choose tools, run allowed tools, validate the assessment."""
 import json
 import os
+import re
 from time import monotonic
 from pathlib import Path
 
@@ -58,10 +59,12 @@ Final answer must be a JSON object with exactly these fields:
 summary: nonempty string;
 review_recommended: boolean;
 review_reason: nonempty string explaining screening uncertainty/indicators;
-findings: eight objects, each with policy_id, status, evidence, explanation, action.
+findings: eight objects, each with policy_id, status, evidence_source_ids, explanation, action.
 status is Met, Gap identified, Insufficient information, or Not applicable.
-evidence is an exact nonempty substring of the scenario, or empty for missing evidence.
-Met, Gap identified, and Not applicable require a nonempty evidence quote.
+evidence_source_ids is an array of integer IDs from source_sentences supplied with the scenario.
+Select the sentence IDs supporting the finding; use [] for missing evidence.
+Do not write or paraphrase an evidence quotation: Python copies the source text.
+Met, Gap identified, and Not applicable require at least one source sentence ID.
 explanation and action must be nonempty strings. Actions for missing facts should
 request specific evidence, not assume controls are absent.
 Classification rules and examples (apply to every policy, not only these examples):
@@ -93,6 +96,41 @@ If it merely establishes relevance and the control is unspecified, change it to
 Insufficient information and request the missing evidence.
 Do not include markdown fences. All narrative fields are plain text.
 '''
+
+
+def source_sentences(scenario):
+    """Number original text spans; keep offsets so evidence is copied verbatim."""
+    sources = []
+    for match in re.finditer(r'[^.!?\n]+[.!?]*', scenario):
+        text = match.group().strip()
+        if text:
+            start = match.start() + len(match.group()) - len(match.group().lstrip())
+            sources.append({'id': len(sources) + 1, 'text': text,
+                            'start': start, 'end': start + len(text)})
+    return sources
+
+
+def attach_evidence(result, scenario, sources):
+    """The model selects IDs. Python supplies the actual quotation."""
+    if not isinstance(result, dict) or not isinstance(result.get('findings'), list):
+        raise ValueError('Invalid assessment structure.')
+    by_id = {source['id']: source for source in sources}
+    for finding in result['findings']:
+        if not isinstance(finding, dict):
+            raise ValueError('Invalid finding.')
+        ids = finding.get('evidence_source_ids')
+        if not isinstance(ids, list) or any(type(i) is not int or i not in by_id for i in ids):
+            raise ValueError('Evidence must reference valid source sentence IDs.')
+        if len(ids) != len(set(ids)):
+            raise ValueError('Duplicate evidence source IDs.')
+        if ids:
+            # If several sentences are selected, quote the full original span.
+            start = min(by_id[i]['start'] for i in ids)
+            end = max(by_id[i]['end'] for i in ids)
+            finding['evidence'] = scenario[start:end]
+        else:
+            finding['evidence'] = ''
+    return result
 
 
 def validate_assessment(result, scenario):
@@ -222,12 +260,16 @@ def assess(scenario, model, progress=None):
     writing_prompt += ('\nReturn only the final JSON assessment. No tools are available. '
                        'Keep each explanation and action to one short sentence. '
                        '\nRetrieved reference data:\n' + json.dumps(trace))
+    sources = source_sentences(scenario)
+    source_input = {'scenario': scenario, 'source_sentences': [
+        {'id': s['id'], 'text': s['text']} for s in sources]}
     final_messages = [{'role': 'system', 'content': writing_prompt},
-                      {'role': 'user', 'content': scenario}]
+                      {'role': 'user', 'content': json.dumps(source_input)}]
     report('3/3: Generating assessment (API call 2 of 2)…')
     started = monotonic()
     final = call_model(final_messages, model, api_key, False)
     assessment_seconds = round(monotonic() - started, 1)
-    result = validate_assessment(json.loads(final.get('content') or ''), scenario)
+    result = attach_evidence(json.loads(final.get('content') or ''), scenario, sources)
+    result = validate_assessment(result, scenario)
     report(f'Assessment validated. Generation took {assessment_seconds}s.')
     return result, trace

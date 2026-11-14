@@ -99,3 +99,7 @@ python live_check.py --all
 ```
 
 These checks use your real Groq key and quota. The default check uses two API calls. Revised model quality must be verified live; the offline tests do not establish it. The light theme is configured in `.streamlit/config.toml`; restart Streamlit after pulling changes.
+
+## Source-based evidence
+
+The final request includes numbered source sentences. The model selects `evidence_source_ids`; Python copies the corresponding original text into `evidence` using offsets. For several selected sentences, the full original span between them is quoted. Unknown IDs are rejected, and exact-match validation still runs. Sentence IDs guarantee source provenance, not the correctness of the model's interpretation. See `PRESENTATION_NOTES.md` for the observed quotation failure and repair.
