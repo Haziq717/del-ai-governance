@@ -184,12 +184,22 @@ def assess(scenario, model, progress=None):
         messages.append({'role': 'tool', 'tool_call_id': call['id'], 'content': json.dumps(output)})
     if 'get_requirements' not in called:
         raise ValueError('Agent did not retrieve policies. Assessment stopped.')
-    messages.append({'role': 'user', 'content':
-                     'Return the final assessment JSON now. Keep each explanation and action '
-                     'to one short sentence. No more tool calls.'})
+    # Tool selection is finished. Build a fresh writing request so the model
+    # does not continue the tool-calling conversation or repeat retrieval.
+    writing_prompt = PROMPT.replace(
+        'Retrieve requirements with get_requirements before answering. Use\n'
+        'get_review_criteria when screening for high-risk indicators. Assess ALL eight policies.',
+        'The approved tools have ALREADY run. Their results are supplied below. '
+        'Do not call tools or request retrieval. Assess ALL eight policies.'
+    )
+    writing_prompt += ('\nReturn only the final JSON assessment. No tools are available. '
+                       'Keep each explanation and action to one short sentence. '
+                       '\nRetrieved reference data:\n' + json.dumps(trace))
+    final_messages = [{'role': 'system', 'content': writing_prompt},
+                      {'role': 'user', 'content': scenario}]
     report('3/3: Generating assessment (API call 2 of 2)…')
     started = monotonic()
-    final = call_model(messages, model, api_key, False)
+    final = call_model(final_messages, model, api_key, False)
     assessment_seconds = round(monotonic() - started, 1)
     result = validate_assessment(json.loads(final.get('content') or ''), scenario)
     report(f'Assessment validated. Generation took {assessment_seconds}s.')

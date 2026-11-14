@@ -47,6 +47,13 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(len(result['findings']), 8)
         self.assertEqual(trace[0]['tool'], 'get_requirements')
         self.assertEqual(api.call_count, 2)
+        final_messages = api.call_args_list[1].args[0]
+        self.assertEqual([m['role'] for m in final_messages], ['system', 'user'])
+        self.assertNotIn('Retrieve requirements with get_requirements before answering',
+                         final_messages[0]['content'])
+        self.assertIn('ALREADY run', final_messages[0]['content'])
+        self.assertIn('AI-008', final_messages[0]['content'])
+        self.assertEqual(final_messages[1]['content'], 'Fictional example')
         self.assertEqual(len(updates), 4)
 
     @patch.dict(os.environ, {'GROQ_API_KEY': 'fake-test-key'})
