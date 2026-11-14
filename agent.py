@@ -109,8 +109,9 @@ def call_model(messages, model, api_key, tools_enabled):
     stage = 'Tool selection' if tools_enabled else 'Assessment generation'
     read_timeout = 60 if tools_enabled else 120
     body = {'model': model, 'messages': messages,
-            'max_tokens': 1024 if tools_enabled else 4000,
-            'reasoning_effort': 'low'}
+            'max_tokens': 1024 if tools_enabled else 4000}
+    if model in ['openai/gpt-oss-20b', 'openai/gpt-oss-120b']:
+        body['reasoning_effort'] = 'low'
     if tools_enabled:
         body['tools'] = TOOL_SCHEMAS
         body['tool_choice'] = 'required'
@@ -124,11 +125,19 @@ def call_model(messages, model, api_key, tools_enabled):
     except requests.Timeout:
         raise RuntimeError(f'{stage} timed out after waiting {read_timeout}s for data. '
                            'No automatic retry was made. Check connectivity or retry once.') from None
-    # Do not expose provider error bodies or request headers in the UI.
+    # Show only a short error message; never expose headers or failed_generation.
     if response.status_code == 429:
         raise RuntimeError('API quota reached. Wait or check your model quota in Groq Console.')
     if not response.ok:
-        raise RuntimeError(f'API request failed ({response.status_code}). Check key and model access.')
+        detail = 'Check the selected model and request settings.'
+        try:
+            error = response.json().get('error', {})
+            message = error.get('message')
+            if isinstance(message, str):
+                detail = message.replace(api_key, '[REDACTED]')[:500]
+        except (ValueError, AttributeError):
+            pass
+        raise RuntimeError(f'{stage}: Groq returned HTTP {response.status_code}. {detail}')
     choice = response.json()['choices'][0]
     if choice.get('finish_reason') == 'length':
         raise RuntimeError(f'{stage} reached its output limit. No partial assessment was accepted.')

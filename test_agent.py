@@ -67,7 +67,7 @@ class AgentTests(unittest.TestCase):
             post.return_value.ok = True
             post.return_value.status_code = 200
             post.return_value.json.return_value = {'choices': [{'message': {}}]}
-            call_model([], 'test-model', 'fake-key', True)
+            call_model([], 'openai/gpt-oss-20b', 'fake-key', True)
             self.assertEqual(post.call_args.args[0], 'https://api.groq.com/openai/v1/chat/completions')
             self.assertEqual(post.call_args.kwargs['timeout'], (10, 60))
             self.assertEqual(post.call_args.kwargs['json']['reasoning_effort'], 'low')
@@ -109,6 +109,18 @@ class AgentTests(unittest.TestCase):
         self.assertTrue(any('No findings match' in i.value for i in app.info))
         app.text_area[0].set_value('Changed scenario').run()
         self.assertEqual(len(app.metric), 0)
+
+    def test_provider_error_is_redacted(self):
+        with patch('agent.requests.post') as post:
+            post.return_value.ok = False
+            post.return_value.status_code = 400
+            post.return_value.json.return_value = {'error': {
+                'message': 'Unsupported parameter fake-secret', 'failed_generation': 'private payload'}}
+            with self.assertRaises(RuntimeError) as error:
+                call_model([], 'test-model', 'fake-secret', True)
+            self.assertIn('Unsupported parameter', str(error.exception))
+            self.assertNotIn('fake-secret', str(error.exception))
+            self.assertNotIn('private payload', str(error.exception))
 
     def test_screen(self):
         from streamlit.testing.v1 import AppTest
