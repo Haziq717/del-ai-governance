@@ -53,31 +53,7 @@ These checks do not prove that the model interpreted the evidence correctly. A r
 
 The prompt tells the model to treat scenario text as data rather than instructions, but prompt-injection resistance is not guaranteed. The model cannot execute shell commands, browse the web, or take business actions. The app has no separate login or role system; local logging is not a production monitoring setup.
 
-## Testing
 
-Run the offline tests:
-
-```bash
-python -m unittest -v test_agent.py
-```
-
-These use simulated API responses to check the Python logic and Streamlit screen. They do not measure live model accuracy.
-
-With a working Groq key, run a live regression check:
-
-```bash
-python live_check.py
-python live_check.py --case security
-python live_check.py --case employee
-```
-
-Each command uses two API calls. To run all three examples and an explicit-violation case together:
-
-```bash
-python live_check.py --all
-```
-
-That uses eight API calls. Review the explanations as well as the reported statuses. For the original customer-support and internal-security examples, the expected result is AI-003 Met and the other seven requirements Insufficient information. For the employee example, all eight remain Insufficient information, with additional review recommended under the prototype screening criteria.
 
 
 
