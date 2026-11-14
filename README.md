@@ -87,3 +87,15 @@ Commit working increments during development. Capture a real assessment screensh
 ## Interactive dashboard
 
 Load one of three scenario cards, edit the scenario, and assess it. Results include status counts, a status filter, policy evidence panels, an action list, an execution trace tab, and a JSON download. Results are hidden when the scenario changes. The API-key indicator only checks that the environment variable exists, not provider connectivity.
+
+## Evidence-classification regression
+
+Live testing found two unsupported gaps in the original customer support example. The prompt now explicitly distinguishes missing information from confirmed violations. See `PRESENTATION_NOTES.md` for the observed issue, changes, expected results, and verification limits.
+
+```bash
+python live_check.py
+# Optional: also verify explicit violations are still detected (four calls total)
+python live_check.py --all
+```
+
+These checks use your real Groq key and quota. The default check uses two API calls. Revised model quality must be verified live; the offline tests do not establish it. The light theme is configured in `.streamlit/config.toml`; restart Streamlit after pulling changes.

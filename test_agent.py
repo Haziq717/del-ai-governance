@@ -52,6 +52,8 @@ class AgentTests(unittest.TestCase):
         self.assertNotIn('Retrieve requirements with get_requirements before answering',
                          final_messages[0]['content'])
         self.assertIn('ALREADY run', final_messages[0]['content'])
+        self.assertIn('Missing evidence is NOT evidence of a violation', final_messages[0]['content'])
+        self.assertIn('Missing governance details alone do not trigger', final_messages[0]['content'])
         self.assertIn('AI-008', final_messages[0]['content'])
         self.assertEqual(final_messages[1]['content'], 'Fictional example')
         self.assertEqual(len(updates), 4)

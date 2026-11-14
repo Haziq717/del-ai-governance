@@ -64,6 +64,33 @@ evidence is an exact nonempty substring of the scenario, or empty for missing ev
 Met, Gap identified, and Not applicable require a nonempty evidence quote.
 explanation and action must be nonempty strings. Actions for missing facts should
 request specific evidence, not assume controls are absent.
+Classification rules and examples (apply to every policy, not only these examples):
+- Missing evidence is NOT evidence of a violation. Never use Gap identified merely
+  because a control, document, owner, or review is not mentioned.
+- AI-002: 'process customer names, account information' establishes sensitive data,
+  NOT missing controls. With no control details: Insufficient information; request
+  the data-protection controls and evidence before deciding.
+- AI-002: 'Customer account information will be sent without any protective controls'
+  is an explicit contradiction and supports Gap identified.
+- AI-006: 'third-party hosted LLM API' establishes a third-party service,
+  NOT an absent assessment. With no assessment details: Insufficient information.
+- AI-006: 'We will deploy the third-party service without a security assessment'
+  explicitly contradicts the policy and supports Gap identified.
+- AI-007: a purpose is described, but this does not establish documented limitations.
+- In summary text, distinguish unknown controls from confirmed failures. Never say
+  a requirement is not met unless there is explicit contradictory evidence.
+- Missing governance details alone do not trigger high-risk classification.
+  Use retrieved screening indicators. If no indicator is established, set
+  review_recommended to false and explain that risk classification still needs
+  clarification; this is not approval. For example, customer-data processing with
+  unspecified controls requires clarification, not an assumption of unprotected data.
+- Primary reliance on AI for promotion decisions is a disclosed screening indicator:
+  recommend additional review even if review history is unknown. AI-008 itself
+  remains Insufficient information unless review evidence or an explicit gap is given.
+Before returning, check every Gap identified: does its exact quotation explicitly
+contradict the requirement, or merely establish that the policy is relevant?
+If it merely establishes relevance and the control is unspecified, change it to
+Insufficient information and request the missing evidence.
 Do not include markdown fences. All narrative fields are plain text.
 '''
 

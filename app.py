@@ -13,10 +13,11 @@ scenarios = json.loads((BASE / 'scenarios.json').read_text())
 st.set_page_config(page_title='AI Governance Analyst', page_icon='🛡️', layout='wide')
 # Static styling only. Model output is always rendered as plain text.
 st.markdown('''<style>
-.stApp {background: #0b1120;}
+.stApp {background: #f6f8fc; color: #172b4d;}
 .block-container {max-width: 1280px; padding-top: 2rem;}
-[data-testid="stMetric"] {background: #152239; padding: 18px; border-radius: 12px;}
-div.stButton > button[kind="primary"] {background: #2563eb; border: none;}
+[data-testid="stMetric"] {background: #ffffff; border: 1px solid #dce4ef; padding: 18px; border-radius: 12px;}
+div.stButton > button[kind="primary"] {background: #1d4ed8; color: #ffffff; border: none;}
+[data-testid="stSidebar"] {background: #eaf0f8;}
 </style>''', unsafe_allow_html=True)
 st.title('AI Governance Analyst')
 st.caption('Acme Financial Services  /  Security & Compliance Workspace')
