@@ -16,7 +16,7 @@ No hardcoded scenario result or automatic gap-to-unknown conversion was added. E
 
 For the original customer support scenario, the expected result is one Met (AI-003) and seven Insufficient information findings. AI-002 and AI-006 need clarification. Under the prototype screening criteria, unspecified controls alone do not justify additional risk review; risk classification remains open and this is not deployment approval.
 
-These are expected results, not a claim that the revised live output has passed. Run `python live_check.py` to check the original example (two API calls). Run `python live_check.py --all` to also verify that explicitly unprotected data and an explicitly unassessed third-party deployment remain gaps (four API calls total). Account quota applies. Review the narrative manually too. A passing example does not guarantee all future classifications.
+These are expected results, not a claim that the revised live output has passed. Run `python live_check.py` to check the original example (two API calls). Run `python live_check.py --all` to also verify that explicitly unprotected data and an explicitly unassessed third-party deployment remain gaps, along with the internal-security example (six API calls total). Account quota applies. Review the narrative manually too. A passing example does not guarantee all future classifications.
 
 ## Presentation wording
 
@@ -33,3 +33,12 @@ The original dashboard used a dark background. The revised version uses Streamli
 A later live run was blocked because a generated quotation did not exactly occur in the scenario. Instead of weakening the quote validator or accepting approximate matches, Python now numbers source text spans before the final request. The model returns `evidence_source_ids`, and Python copies the original text using stored offsets. Invalid source IDs are rejected. When multiple sentences are selected, the displayed quote is the original contiguous span containing them, including intervening text. Empty source IDs mean missing evidence. The original exact-match validator remains as a final check.
 
 This removes the need for the model to reproduce punctuation and spacing. It does not establish that the selected sentence supports the conclusion; that remains subject to human review and live regression testing. This change was verified with offline tests for original-text copying, invalid IDs, and multi-sentence spacing. Revised live results must still be observed before claiming they pass.
+
+
+## Internal hosting and risk classification: second live finding
+
+In the original internal-security example, a live assessment incorrectly inferred that no third-party model/service was used because deployment was internal. It also claimed that a high-risk classification had been identified, although none was stated. Internal cloud hosting does not establish model provenance: a self-hosted model may still be third-party. Logs may contain sensitive information, but the example does not establish their contents.
+
+The prompt now explicitly separates hosting from model/service provenance, gives a counterexample for self-hosted third-party models, and requires clarification when provenance is unknown. It prohibits inventing high-risk labels from security context alone and asks for risk classification and review evidence. The changes apply generally; no scenario-specific classifications are hardcoded into the assessment engine.
+
+Run `python live_check.py --case security` (two API calls) to check the supplied internal-security example. Expected: AI-003 Met; the other seven policies Insufficient information. Under the disclosed screening criteria, the review flag is false pending clarification, not deployment approval. Manually inspect AI-002 wording and AI-008's explanation as well as counts. `python live_check.py --all` now runs three cases (six API calls). These expected outputs are not claimed as live-verified after the change. Offline checks verify prompt delivery and existing validation/UI behavior, not semantic accuracy.

@@ -9,7 +9,9 @@ from agent import assess
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--all', action='store_true', help='Also test explicit violations (four API calls total).')
+    parser.add_argument('--all', action='store_true', help='Test both examples and explicit violations (six API calls total).')
+    parser.add_argument('--case', choices=['customer', 'security'], default='customer',
+                        help='Choose one baseline example (two API calls).')
     args = parser.parse_args()
     samples = json.loads(Path(__file__).with_name('scenarios.json').read_text())
     cases = [('Original customer support scenario', samples['Customer Support Assistant'],
@@ -17,6 +19,14 @@ def main():
                'AI-003': 'Met', 'AI-004': 'Insufficient information',
                'AI-005': 'Insufficient information', 'AI-006': 'Insufficient information',
                'AI-007': 'Insufficient information', 'AI-008': 'Insufficient information'}, False)]
+    security_case = ('Original internal security scenario', samples['Internal Security Assistant'],
+                     {p: ('Met' if p == 'AI-003' else 'Insufficient information')
+                      for p in ['AI-001', 'AI-002', 'AI-003', 'AI-004', 'AI-005', 'AI-006', 'AI-007', 'AI-008']},
+                     False)
+    if args.all:
+        cases.append(security_case)
+    elif args.case == 'security':
+        cases = [security_case]
     if args.all:
         cases.append(('Explicit violations',
                       'We will deploy a customer support AI using a third-party hosted LLM API. '

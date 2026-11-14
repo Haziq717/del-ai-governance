@@ -79,6 +79,23 @@ Classification rules and examples (apply to every policy, not only these example
   NOT an absent assessment. With no assessment details: Insufficient information.
 - AI-006: 'We will deploy the third-party service without a security assessment'
   explicitly contradicts the policy and supports Gap identified.
+- AI-006: 'internal AI assistant' and 'deployed within the organization's cloud'
+  describe purpose and hosting ONLY. They do not establish the model's origin,
+  ownership, vendor dependencies, or whether third-party services are involved.
+  NEVER mark AI-006 Not applicable using internal/cloud hosting as evidence.
+  If model/service provenance is unspecified: Insufficient information; ask for
+  model/provider details and assessment evidence for any third-party components.
+  Not applicable needs explicit non-use of ALL third-party AI models AND services;
+  a self-hosted third-party model still requires assessment under this policy.
+- AI-002: 'internal security logs' MAY contain sensitive/confidential information;
+  do not assert their contents or sensitivity as established facts. If unspecified,
+  ask for data classification and protective controls. Internal hosting proves neither.
+- AI-008: do not claim 'high-risk use case is identified' without an explicit stated
+  classification or a supported retrieved screening indicator. Security-related work
+  or access to logs alone is not a defined high-risk trigger in this prototype.
+  For alert recommendations reviewed by analysts, with no risk classification or
+  review history: Insufficient information. Ask for risk classification and any
+  required review evidence. Do not invent a high-risk label or autonomous actions.
 - AI-007: a purpose is described, but this does not establish documented limitations.
 - In summary text, distinguish unknown controls from confirmed failures. Never say
   a requirement is not met unless there is explicit contradictory evidence.
@@ -257,7 +274,11 @@ def assess(scenario, model, progress=None):
         'The approved tools have ALREADY run. Their results are supplied below. '
         'Do not call tools or request retrieval. Assess ALL eight policies.'
     )
-    writing_prompt += ('\nReturn only the final JSON assessment. No tools are available. '
+    writing_prompt += ('\nFinal applicability check: internal cloud hosting does not imply '
+                       'absence of third-party AI. Unknown provenance means AI-006 is '
+                       'Insufficient information. Do not invent a high-risk classification '
+                       'for AI-008 or confirmed sensitive contents of internal logs. '
+                       '\nReturn only the final JSON assessment. No tools are available. '
                        'Keep each explanation and action to one short sentence. '
                        '\nRetrieved reference data:\n' + json.dumps(trace))
     sources = source_sentences(scenario)

@@ -94,7 +94,7 @@ Live testing found two unsupported gaps in the original customer support example
 
 ```bash
 python live_check.py
-# Optional: also verify explicit violations are still detected (four calls total)
+# Optional: check both examples and explicit violations (six calls total)
 python live_check.py --all
 ```
 
@@ -103,3 +103,5 @@ These checks use your real Groq key and quota. The default check uses two API ca
 ## Source-based evidence
 
 The final request includes numbered source sentences. The model selects `evidence_source_ids`; Python copies the corresponding original text into `evidence` using offsets. For several selected sentences, the full original span between them is quoted. Unknown IDs are rejected, and exact-match validation still runs. Sentence IDs guarantee source provenance, not the correctness of the model's interpretation. See `PRESENTATION_NOTES.md` for the observed quotation failure and repair.
+
+To test only the internal-security example, run `python live_check.py --case security` (two API calls). Unknown model provenance must not be treated as proof of no third-party use. Review AI-002 sensitivity wording and AI-008 classification reasoning manually.
