@@ -68,15 +68,16 @@ With a working Groq key, run a live regression check:
 ```bash
 python live_check.py
 python live_check.py --case security
+python live_check.py --case employee
 ```
 
-Each command uses two API calls. To run both examples and an explicit-violation case together:
+Each command uses two API calls. To run all three examples and an explicit-violation case together:
 
 ```bash
 python live_check.py --all
 ```
 
-That uses six API calls. Review the explanations as well as the reported statuses. For the original customer-support and internal-security examples, the expected result is AI-003 Met and the other seven requirements Insufficient information.
+That uses eight API calls. Review the explanations as well as the reported statuses. For the original customer-support and internal-security examples, the expected result is AI-003 Met and the other seven requirements Insufficient information. For the employee example, all eight remain Insufficient information, with additional review recommended under the prototype screening criteria.
 
 Live testing previously exposed unsupported gap findings, an incorrect assumption about internal hosting, and quotation-copying errors. The changes and remaining verification work are recorded in [PRESENTATION_NOTES.md](PRESENTATION_NOTES.md). [WALKTHROUGH.md](WALKTHROUGH.md) explains the code in execution order.
 

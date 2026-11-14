@@ -55,6 +55,9 @@ class AgentTests(unittest.TestCase):
         self.assertIn('Missing evidence is NOT evidence of a violation', final_messages[0]['content'])
         self.assertIn('Missing governance details alone do not trigger', final_messages[0]['content'])
         self.assertIn('AI-008', final_messages[0]['content'])
+        self.assertIn('automatically deciding promotions', final_messages[0]['content'])
+        self.assertIn('review_recommended=true', final_messages[0]['content'])
+        self.assertIn('documented intended use and', final_messages[0]['content'])
         self.assertIn('NEVER mark AI-006 Not applicable using internal/cloud hosting',
                       final_messages[0]['content'])
         self.assertEqual(json.loads(final_messages[1]['content'])['scenario'], 'Fictional example')

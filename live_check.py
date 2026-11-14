@@ -9,8 +9,8 @@ from agent import assess
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--all', action='store_true', help='Test both examples and explicit violations (six API calls total).')
-    parser.add_argument('--case', choices=['customer', 'security'], default='customer',
+    parser.add_argument('--all', action='store_true', help='Test both examples and explicit violations (eight API calls total).')
+    parser.add_argument('--case', choices=['customer', 'security', 'employee'], default='customer',
                         help='Choose one baseline example (two API calls).')
     args = parser.parse_args()
     samples = json.loads(Path(__file__).with_name('scenarios.json').read_text())
@@ -23,10 +23,16 @@ def main():
                      {p: ('Met' if p == 'AI-003' else 'Insufficient information')
                       for p in ['AI-001', 'AI-002', 'AI-003', 'AI-004', 'AI-005', 'AI-006', 'AI-007', 'AI-008']},
                      False)
+    employee_case = ('Original employee decisions scenario', samples['Automated Employee Decisions'],
+                     {p: 'Insufficient information' for p in [
+                         'AI-001', 'AI-002', 'AI-003', 'AI-004', 'AI-005', 'AI-006', 'AI-007', 'AI-008']},
+                     True)
     if args.all:
-        cases.append(security_case)
+        cases.extend([security_case, employee_case])
     elif args.case == 'security':
         cases = [security_case]
+    elif args.case == 'employee':
+        cases = [employee_case]
     if args.all:
         cases.append(('Explicit violations',
                       'We will deploy a customer support AI using a third-party hosted LLM API. '
@@ -46,6 +52,11 @@ def main():
         if result['review_recommended'] != expected_review:
             failures.append(name + ': review flag')
             print('FAIL: additional-review flag differs from the prototype screening expectation.')
+        print('Review recommendation:', result['review_recommended'])
+        print('Review reason:', result['review_reason'])
+        for finding in result['findings']:
+            if finding['policy_id'] in ['AI-002', 'AI-003', 'AI-007', 'AI-008']:
+                print(finding['policy_id'], finding['explanation'], 'Action:', finding['action'])
         print('Inspect summary, quotations, explanations, and actions manually as well.')
     if failures:
         raise SystemExit('Regression check failed: ' + ', '.join(failures))

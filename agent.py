@@ -107,6 +107,30 @@ Classification rules and examples (apply to every policy, not only these example
 - Primary reliance on AI for promotion decisions is a disclosed screening indicator:
   recommend additional review even if review history is unknown. AI-008 itself
   remains Insufficient information unless review evidence or an explicit gap is given.
+Precision rules for explanations and actions:
+- AI-007: when the scenario describes a purpose but provides no approved document
+  or limitations, say: 'The purpose is described, but documented intended use and
+  limitations are not established.' Do not say the purpose is missing, and do not
+  assert documentation does not exist just because it was not supplied.
+- AI-002: for internal security logs of unspecified contents, say the logs MAY
+  contain sensitive information. Request classification and protective controls.
+  Never turn that possibility into a confirmed statement about sensitive contents.
+- AI-003: automatically generating promotion recommendations is not the same as
+  automatically deciding promotions. Primary reliance on AI does not prove absent
+  human review. If meaningful review is unspecified, use Insufficient information;
+  ask who reviews, challenges, and can override promotion recommendations.
+- AI-008: distinguish (1) a screening indicator, (2) the organization's formal risk
+  classification, and (3) evidence of completed additional review. Never conflate them.
+  Primary reliance on AI for promotion decisions triggers review_recommended=true
+  under the prototype criteria. It does not establish a formal high-risk classification
+  or a completed review. Use Insufficient information if those details are unknown.
+  Say: 'Primary reliance on AI for promotion decisions triggers the prototype review
+  recommendation, but formal risk classification and completed review are not established.'
+  Request formal classification and additional review before deployment if not completed.
+- A recommendation for additional review is separate from the compliance status of
+  AI-008. A documented completed review can meet AI-008 even if a screening indicator exists.
+- Avoid vague claims such as 'high risk is implied'. Name the actual stated fact and
+  label the screening conclusion as a prototype criterion, not a supplied company policy.
 Before returning, check every Gap identified: does its exact quotation explicitly
 contradict the requirement, or merely establish that the policy is relevant?
 If it merely establishes relevance and the control is unspecified, change it to

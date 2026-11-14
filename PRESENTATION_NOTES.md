@@ -42,3 +42,12 @@ In the original internal-security example, a live assessment incorrectly inferre
 The prompt now explicitly separates hosting from model/service provenance, gives a counterexample for self-hosted third-party models, and requires clarification when provenance is unknown. It prohibits inventing high-risk labels from security context alone and asks for risk classification and review evidence. The changes apply generally; no scenario-specific classifications are hardcoded into the assessment engine.
 
 Run `python live_check.py --case security` (two API calls) to check the supplied internal-security example. Expected: AI-003 Met; the other seven policies Insufficient information. Under the disclosed screening criteria, the review flag is false pending clarification, not deployment approval. Manually inspect AI-002 wording and AI-008's explanation as well as counts. `python live_check.py --all` now runs three cases (six API calls). These expected outputs are not claimed as live-verified after the change. Offline checks verify prompt delivery and existing validation/UI behavior, not semantic accuracy.
+
+
+## Three-scenario wording review
+
+Subsequent user-provided live outputs showed the expected status counts for A and B, and eight Insufficient information findings for C. The C excerpt did not include its overview review flag, so that flag has not been verified from the provided output. Some narrative still overstated unknown facts: sensitive contents of logs, whether documentation exists, and whether a formal high-risk classification had been made.
+
+The prompt now distinguishes described purpose from documented use/limitations, potentially sensitive logs from confirmed contents, recommendation generation from autonomous decisions, and prototype screening from formal classification and completed review. For C it must recommend review because AI is the primary promotion-decision input, while leaving unknown oversight and review history as Insufficient information. It requests who can review, challenge, and override recommendations.
+
+The live checker now supports `--case employee` (two calls). `--all` runs four cases, eight calls total. It prints the review reason and relevant narrative for manual review. Expected statuses are test expectations only, not hardcoded application results. The wording revision still requires a fresh live test; offline checks verify that the revised instructions reach the final request and that the existing boundaries continue to work.
